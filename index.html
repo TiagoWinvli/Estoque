@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estoque de Caixas — Controle de Calçados</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f1720">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Estoque">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+
+<style>
+  :root{
+    --bg: #0f1720;
+    --panel: #16212c;
+    --panel-2: #1c2b38;
+    --line: #29404f;
+    --ink: #e7eef2;
+    --ink-dim: #93a9b6;
+    --accent: #a78bfa;
+    --accent-dim: #4c3a7a;
+    --ok: #4fd1a5;
+    --danger: #ef6a6a;
+    --mono: 'JetBrains Mono', 'Courier New', monospace;
+    --sans: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background: radial-gradient(circle at top left, #17222c 0%, var(--bg) 55%);
+    color: var(--ink);
+    font-family: var(--sans);
+    min-height:100vh;
+    padding-bottom: 60px;
+  }
+  header{
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid var(--line);
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:16px;
+  }
+  .brand{display:flex; align-items:center; gap:14px;}
+  .brand .tag{
+    width:44px;height:44px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .brand .tag img{ width:44px; height:44px; object-fit:contain; }
+  h1{font-size:20px; margin:0; letter-spacing:.3px;}
+  .sub{color:var(--ink-dim); font-size:12.5px; margin-top:2px; font-family:var(--mono);}
+  .stats{display:flex; gap:22px; font-family:var(--mono); font-size:13px;}
+  .stats div{text-align:right}
+  .stats .num{font-size:22px; color:var(--accent); font-weight:700; line-height:1;}
+  .stats .lab{color:var(--ink-dim); font-size:10.5px; text-transform:uppercase; letter-spacing:.08em;}
+
+  main{padding: 24px 32px; max-width:1400px; margin:0 auto;}
+
+  .toolbar{
+    display:flex; gap:12px; flex-wrap:wrap; align-items:center;
+    margin-bottom:18px;
+  }
+  .search-wrap{ position:relative; flex:1; min-width:240px;}
+  input[type=text], input[type=number], select{
+    background: var(--panel);
+    border:1px solid var(--line);
+    color: var(--ink);
+    padding:10px 12px;
+    border-radius:8px;
+    font-family: var(--mono);
+    font-size:13.5px;
+    outline:none;
+    transition: border-color .15s;
+  }
+  input[type=text]:focus, input[type=number]:focus, select:focus{ border-color: var(--accent);}
+  #searchInput{width:100%; padding-left:34px;}
+  .search-wrap svg{position:absolute; left:11px; top:50%; transform:translateY(-50%); opacity:.5;}
+  select{min-width:130px; cursor:pointer;}
+
+  button{
+    font-family: var(--sans);
+    font-weight:600;
+    font-size:13.5px;
+    border:none;
+    border-radius:8px;
+    padding:10px 16px;
+    cursor:pointer;
+    transition: transform .08s, filter .15s;
+  }
+  button:active{ transform: scale(.97);}
+  .btn-accent{ background: var(--accent); color:#241b3d;}
+  .btn-accent:hover{ filter:brightness(1.08);}
+  .btn-ghost{ background: var(--panel-2); color: var(--ink); border:1px solid var(--line);}
+  .btn-ghost:hover{ border-color: var(--accent);}
+  .btn-danger{ background: transparent; color: var(--danger); border:1px solid rgba(239,106,106,.4); padding:6px 10px; font-size:12px;}
+  .btn-danger:hover{ background: rgba(239,106,106,.12);}
+
+  .layout{display:grid; grid-template-columns: 1fr; gap:20px;}
+
+  .panel{
+    background: var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    overflow:hidden;
+  }
+  .panel-head{
+    padding:14px 18px;
+    border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:13px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.08em;
+  }
+
+  table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  thead th{
+    text-align:left; padding:10px 14px; font-size:11px; text-transform:uppercase;
+    letter-spacing:.06em; color:var(--ink-dim); border-bottom:1px solid var(--line);
+    position:sticky; top:0; background:var(--panel); cursor:pointer; user-select:none;
+  }
+  thead th:hover{ color: var(--accent);}
+  tbody td{ padding:9px 14px; border-bottom:1px solid rgba(41,64,79,.5); font-family:var(--mono);}
+  tbody tr:hover{ background: rgba(167,139,250,.08);}
+  .badge{
+    display:inline-block; background: var(--panel-2); border:1px solid var(--line);
+    padding:2px 9px; border-radius:20px; font-size:12px; color: var(--accent); font-weight:700;
+  }
+  .qtd{ color: var(--ok); font-weight:700;}
+  .obs{ color:#e8b25c; font-size:11.5px; font-family:var(--sans); font-style:italic;}
+  .empty-obs{ color: var(--ink-dim); opacity:.3;}
+  .table-scroll{ max-height: 560px; overflow:auto;}
+  .empty-state{ padding:40px; text-align:center; color:var(--ink-dim); font-family:var(--mono); font-size:13px;}
+
+  form#addForm{
+    display:grid;
+    grid-template-columns: 110px 1fr 130px 110px 1.4fr auto;
+    gap:10px;
+    padding:16px 18px;
+    align-items:end;
+  }
+  form#addForm label{
+    display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--ink-dim); margin-bottom:6px;
+  }
+  form#addForm input{width:100%;}
+
+  #toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(120%);
+    background: var(--panel-2); border:1px solid var(--accent); color: var(--ink);
+    padding:12px 22px; border-radius:10px; font-family:var(--mono); font-size:13px;
+    transition: transform .25s ease; z-index:50; box-shadow: 0 10px 30px rgba(0,0,0,.4);
+  }
+  #toast.show{ transform:translateX(-50%) translateY(0);}
+
+  .overlay{
+    position:fixed; inset:0; background: rgba(0,0,0,.6);
+    display:none; align-items:center; justify-content:center; z-index:60; padding:20px;
+  }
+  .overlay.show{ display:flex; }
+  .confirm-box{
+    background: var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:22px; max-width:380px; width:100%;
+    animation: popin .18s ease;
+    box-shadow: 0 20px 50px rgba(0,0,0,.5);
+  }
+  @keyframes popin{ from{ transform:scale(.94); opacity:0;} to{ transform:scale(1); opacity:1;} }
+  .confirm-box h3{ margin:0 0 10px; font-size:16px; color:var(--ink);}
+  .confirm-box p{ margin:0 0 20px; color:var(--ink-dim); font-size:13.5px; line-height:1.5; }
+  .confirm-actions{ display:flex; gap:10px; }
+  .confirm-actions button{ flex:1; padding:10px 16px; font-size:13.5px; }
+
+  footer{ text-align:center; color:var(--ink-dim); font-size:11.5px; font-family:var(--mono); padding-top:26px;}
+
+  @media (max-width: 860px){
+    form#addForm{grid-template-columns: 1fr 1fr;}
+    header{padding:20px;}
+    main{padding:16px;}
+    .stats{gap:14px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="tag"><img src="icon-192.png" alt="Estoque de Caixas"></div>
+    <div>
+      <h1>Estoque de Caixas</h1>
+      <div class="sub">controle de calçados por caixa · código · numeração</div>
+    </div>
+  </div>
+  <div class="stats">
+    <div><div class="num" id="statItens">0</div><div class="lab">itens</div></div>
+    <div><div class="num" id="statPares">0</div><div class="lab">pares</div></div>
+    <div><div class="num" id="statCaixas">0</div><div class="lab">caixas</div></div>
+  </div>
+</header>
+
+<main>
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="searchInput" placeholder="Buscar por código, caixa ou numeração... (ex: CT0449002, caixa 12, 38)">
+    </div>
+    <select id="filterCaixa"><option value="">Todas as caixas</option></select>
+    <button class="btn-ghost" id="clearBtn">Limpar filtros</button>
+    <button class="btn-accent" id="exportBtn">Exportar JSON</button>
+    <button class="btn-ghost" id="importBtn">Importar JSON</button>
+    <input type="file" id="importFile" accept=".json" style="display:none">
+  </div>
+
+  <div class="layout">
+    <div class="panel">
+      <div class="panel-head">
+        <span>Adicionar novo item</span>
+      </div>
+      <form id="addForm">
+        <div>
+          <label>Caixa</label>
+          <input type="number" id="inCaixa" min="1" required placeholder="ex: 12">
+        </div>
+        <div>
+          <label>Código</label>
+          <input type="text" id="inCodigo" required placeholder="ex: CT04500003">
+        </div>
+        <div>
+          <label>Numeração</label>
+          <input type="text" id="inNumeracao" placeholder="ex: 37">
+        </div>
+        <div>
+          <label>Quantidade</label>
+          <input type="number" id="inQuantidade" min="0" placeholder="ex: 1">
+        </div>
+        <div>
+          <label>Observação</label>
+          <input type="text" id="inObs" placeholder="opcional">
+        </div>
+        <button type="submit" class="btn-accent">+ Adicionar</button>
+      </form>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <span id="resultsLabel">Todos os itens</span>
+        <span id="resultsCount"></span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th data-key="caixa">Caixa</th>
+              <th data-key="codigo">Código</th>
+              <th data-key="numeracao">Numeração</th>
+              <th data-key="quantidade">Qtd</th>
+              <th data-key="obs">Observação</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+        <div class="empty-state" id="emptyState" style="display:none;">Nenhum item encontrado para esta busca.</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Dados carregados a partir do levantamento das caixas 1 a 77 · edite, adicione ou exclua livremente · use "Exportar JSON" para salvar suas alterações em arquivo</footer>
+</main>
+
+<div id="toast"></div>
+
+<div class="overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <h3>Confirmar exclusão</h3>
+    <p id="confirmMessage"></p>
+    <div class="confirm-actions">
+      <button type="button" class="btn-ghost" id="confirmCancelBtn">Cancelar</button>
+      <button type="button" class="btn-danger" id="confirmOkBtn" style="border:1px solid var(--danger); background:transparent;">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const INITIAL_DATA = [{"id": 1, "caixa": 1, "codigo": "CT04490002", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 2, "caixa": 1, "codigo": "CT04490002", "numeracao": 33.5, "quantidade": 1, "obs": ""}, {"id": 3, "caixa": 1, "codigo": "CT04490002", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 4, "caixa": 1, "codigo": "CT04190040", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 5, "caixa": 1, "codigo": "CT04190040", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 6, "caixa": 1, "codigo": "CT17290001", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 7, "caixa": 1, "codigo": "CT17290001", "numeracao": 40, "quantidade": 1, "obs": ""}, {"id": 8, "caixa": 2, "codigo": "CT04940003", "numeracao": 33, "quantidade": 3, "obs": ""}, {"id": 9, "caixa": 2, "codigo": "CT04940003", "numeracao": 37, "quantidade": 2, "obs": ""}, {"id": 10, "caixa": 2, "codigo": "CT04940003", "numeracao": 40, "quantidade": 3, "obs": ""}, {"id": 11, "caixa": 2, "codigo": "CT09830002", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 12, "caixa": 2, "codigo": "CT09830001", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 13, "caixa": 3, "codigo": "CT17300001", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 14, "caixa": 3, "codigo": "CT17300001", "numeracao": 38, "quantidade": 6, "obs": ""}, {"id": 15, "caixa": 3, "codigo": "CT31520002", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 16, "caixa": 3, "codigo": "CT08260002", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 17, "caixa": 3, "codigo": "CT08260002", "numeracao": 43, "quantidade": 7, "obs": ""}, {"id": 18, "caixa": 3, "codigo": "CT08260001", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 19, "caixa": 3, "codigo": "CT08260001", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 20, "caixa": 4, "codigo": "CT04490001", "numeracao": 35, "quantidade": 2, "obs": ""}, {"id": 21, "caixa": 4, "codigo": "CT04490001", "numeracao": 43, "quantidade": 1, "obs": ""}, {"id": 22, "caixa": 4, "codigo": "CT04490001", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 23, "caixa": 4, "codigo": "CT09830002", "numeracao": 33, "quantidade": 2, "obs": ""}, {"id": 24, "caixa": 4, "codigo": "CT09830002", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 25, "caixa": 4, "codigo": "CT09830003", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 26, "caixa": 4, "codigo": "CT09820002", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 27, "caixa": 5, "codigo": "CT00040008", "numeracao": 44, "quantidade": 1, "obs": ""}, {"id": 28, "caixa": 5, "codigo": "CT00040001", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 29, "caixa": 5, "codigo": "CT00040001", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 30, "caixa": 5, "codigo": "CT04500003", "numeracao": 39, "quantidade": 2, "obs": ""}, {"id": 31, "caixa": 5, "codigo": "CT04500009", "numeracao": 40, "quantidade": 1, "obs": ""}, {"id": 32, "caixa": 5, "codigo": "CT04950003", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 33, "caixa": 5, "codigo": "CT00040007", "numeracao": 44, "quantidade": 1, "obs": ""}, {"id": 34, "caixa": 5, "codigo": "CT25630001", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 35, "caixa": 5, "codigo": "CT04950001", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 36, "caixa": 6, "codigo": "CT04460002", "numeracao": 33, "quantidade": 3, "obs": ""}, {"id": 37, "caixa": 6, "codigo": "CT04460002", "numeracao": 44, "quantidade": 3, "obs": ""}, {"id": 38, "caixa": 6, "codigo": "CK15640001", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 39, "caixa": 6, "codigo": "CT32830001", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 40, "caixa": 6, "codigo": "CT19920014", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 41, "caixa": 6, "codigo": "15917GC-CT00010002", "numeracao": 35.5, "quantidade": 1, "obs": ""}, {"id": 42, "caixa": 6, "codigo": "CT04200003", "numeracao": null, "quantidade": null, "obs": "quantidade ilegível"}, {"id": 43, "caixa": 6, "codigo": "CT00010003", "numeracao": null, "quantidade": null, "obs": "número/quantidade ilegível"}, {"id": 44, "caixa": 7, "codigo": "CT30130004", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 45, "caixa": 7, "codigo": "CT30130004", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 46, "caixa": 7, "codigo": "CT28330002", "numeracao": 35, "quantidade": 3, "obs": ""}, {"id": 47, "caixa": 7, "codigo": "CT28330002", "numeracao": 38, "quantidade": 2, "obs": ""}, {"id": 48, "caixa": 7, "codigo": "CT28330002", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 49, "caixa": 7, "codigo": "CK14780001", "numeracao": 27, "quantidade": 1, "obs": ""}, {"id": 50, "caixa": 7, "codigo": "CT04500006", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 51, "caixa": 8, "codigo": "CT04500005", "numeracao": 43, "quantidade": 8, "obs": "qtd 43 lida como 8, conferir"}, {"id": 52, "caixa": 8, "codigo": "CT04500005", "numeracao": 44, "quantidade": 1, "obs": "qtd 43 lida como 8, conferir"}, {"id": 53, "caixa": 8, "codigo": "CT32940001", "numeracao": 33, "quantidade": 2, "obs": ""}, {"id": 54, "caixa": 8, "codigo": "CT31260001", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 55, "caixa": 8, "codigo": "CT31260001", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 56, "caixa": 8, "codigo": "CT31260001", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 57, "caixa": 8, "codigo": "CT30980001", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 58, "caixa": 8, "codigo": "CT31120001", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 59, "caixa": 8, "codigo": "CT29630001", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 60, "caixa": 9, "codigo": "CT04500001", "numeracao": 44, "quantidade": 2, "obs": ""}, {"id": 61, "caixa": 9, "codigo": "CT28340002", "numeracao": 33, "quantidade": 2, "obs": ""}, {"id": 62, "caixa": 9, "codigo": "CT00040003", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 63, "caixa": 9, "codigo": "CT17300001", "numeracao": 38, "quantidade": 2, "obs": ""}, {"id": 64, "caixa": 9, "codigo": "CT04950001", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 65, "caixa": 9, "codigo": "CT32820001", "numeracao": 40, "quantidade": 1, "obs": ""}, {"id": 66, "caixa": 9, "codigo": "CT28330001", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 67, "caixa": 10, "codigo": "CT25630001", "numeracao": 35, "quantidade": 2, "obs": ""}, {"id": 68, "caixa": 10, "codigo": "CT25630001", "numeracao": 36, "quantidade": 3, "obs": ""}, {"id": 69, "caixa": 10, "codigo": "CT25630001", "numeracao": 37, "quantidade": 3, "obs": ""}, {"id": 70, "caixa": 10, "codigo": "CT25630001", "numeracao": 38, "quantidade": 2, "obs": ""}, {"id": 71, "caixa": 10, "codigo": "CT25630001", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 72, "caixa": 10, "codigo": "CT28010001", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 73, "caixa": 11, "codigo": "CT32310001", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 74, "caixa": 11, "codigo": "CT32310001", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 75, "caixa": 11, "codigo": "CT30140006", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 76, "caixa": 11, "codigo": "CT31590002", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 77, "caixa": 11, "codigo": "CT04200087", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 78, "caixa": 11, "codigo": "CT04200087", "numeracao": 42, "quantidade": 1, "obs": ""}, {"id": 79, "caixa": 11, "codigo": "CT24670002", "numeracao": 40, "quantidade": 2, "obs": ""}, {"id": 80, "caixa": 11, "codigo": "CT29640001", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 81, "caixa": 11, "codigo": "CT04200082", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 82, "caixa": 11, "codigo": "CT19920014", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 83, "caixa": 11, "codigo": "CT26620002", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 84, "caixa": 11, "codigo": "CT04200083", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 85, "caixa": 11, "codigo": "CT30140004", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 86, "caixa": 11, "codigo": "CT29640002", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 87, "caixa": 12, "codigo": "CT30040002", "numeracao": 43, "quantidade": 1, "obs": ""}, {"id": 88, "caixa": 12, "codigo": "CT28340002", "numeracao": 38, "quantidade": 2, "obs": "número lido como 83, provável 38"}, {"id": 89, "caixa": 12, "codigo": "CT25650001", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 90, "caixa": 12, "codigo": "CT31280001", "numeracao": 40, "quantidade": 1, "obs": ""}, {"id": 91, "caixa": 12, "codigo": "CT00010002", "numeracao": 34, "quantidade": 3, "obs": ""}, {"id": 92, "caixa": 13, "codigo": "CT00040003", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 93, "caixa": 13, "codigo": "CT00040003", "numeracao": 41, "quantidade": 1, "obs": ""}, {"id": 94, "caixa": 13, "codigo": "CT00040003", "numeracao": 44, "quantidade": 1, "obs": ""}, {"id": 95, "caixa": 13, "codigo": "CT00040001", "numeracao": 42, "quantidade": 1, "obs": ""}, {"id": 96, "caixa": 13, "codigo": "CT04500003", "numeracao": 41, "quantidade": 1, "obs": ""}, {"id": 97, "caixa": 14, "codigo": "CT04950001", "numeracao": 37, "quantidade": 3, "obs": ""}, {"id": 98, "caixa": 14, "codigo": "CT04950001", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 99, "caixa": 14, "codigo": "CT04950001", "numeracao": 39, "quantidade": 2, "obs": ""}, {"id": 100, "caixa": 14, "codigo": "CT04950002", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 101, "caixa": 14, "codigo": "CT04950002", "numeracao": 35, "quantidade": 4, "obs": ""}, {"id": 102, "caixa": 14, "codigo": "CT04950002", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 103, "caixa": 15, "codigo": "CT00010002", "numeracao": 41, "quantidade": 9, "obs": ""}, {"id": 104, "caixa": 15, "codigo": "CT24670001", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 105, "caixa": 15, "codigo": "CT24670001", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 106, "caixa": 15, "codigo": "CT24670001", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 107, "caixa": 15, "codigo": "CK13040001", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 108, "caixa": 16, "codigo": "CT04940003", "numeracao": 37, "quantidade": 4, "obs": ""}, {"id": 109, "caixa": 16, "codigo": "CT04940003", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 110, "caixa": 16, "codigo": "CT04490001", "numeracao": 38, "quantidade": 1, "obs": "número lido como 83, provável 38"}, {"id": 111, "caixa": 16, "codigo": "CT08250002", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 112, "caixa": 16, "codigo": "CT31610001", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 113, "caixa": 17, "codigo": "CT04940001", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 114, "caixa": 17, "codigo": "CT04940001", "numeracao": 39, "quantidade": 4, "obs": ""}, {"id": 115, "caixa": 17, "codigo": "CT09830001", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 116, "caixa": 17, "codigo": "CT09830001", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 117, "caixa": 17, "codigo": "CT04950001", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 118, "caixa": 18, "codigo": "CT28330001", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 119, "caixa": 18, "codigo": "CT28330001", "numeracao": 35, "quantidade": 2, "obs": ""}, {"id": 120, "caixa": 18, "codigo": "CT28330001", "numeracao": 37, "quantidade": 2, "obs": ""}, {"id": 121, "caixa": 18, "codigo": "CT28330001", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 122, "caixa": 18, "codigo": "CT04470001", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 123, "caixa": 18, "codigo": "CK15090001", "numeracao": 29, "quantidade": 1, "obs": ""}, {"id": 124, "caixa": 18, "codigo": "CK15090001", "numeracao": 30, "quantidade": 1, "obs": ""}, {"id": 125, "caixa": 18, "codigo": "CT04500006", "numeracao": 36, "quantidade": 2, "obs": ""}, {"id": 126, "caixa": 18, "codigo": "CT04500006", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 127, "caixa": 18, "codigo": "CT04950002", "numeracao": 42, "quantidade": 1, "obs": ""}, {"id": 128, "caixa": 19, "codigo": "CT04500006", "numeracao": 36, "quantidade": 2, "obs": ""}, {"id": 129, "caixa": 19, "codigo": "CT04500006", "numeracao": 37, "quantidade": 8, "obs": ""}, {"id": 130, "caixa": 19, "codigo": "CT04500006", "numeracao": 40, "quantidade": 1, "obs": ""}, {"id": 131, "caixa": 20, "codigo": "CT00040004", "numeracao": 44, "quantidade": 1, "obs": ""}, {"id": 132, "caixa": 20, "codigo": "CT31790002", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 133, "caixa": 20, "codigo": "CT31790001", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 134, "caixa": 20, "codigo": "CK13030001", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 135, "caixa": 21, "codigo": "CT08250002", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 136, "caixa": 21, "codigo": "CT08250002", "numeracao": 40, "quantidade": 1, "obs": ""}, {"id": 137, "caixa": 21, "codigo": "CT08250002", "numeracao": 42, "quantidade": 1, "obs": ""}, {"id": 138, "caixa": 21, "codigo": "CT08250002", "numeracao": 43, "quantidade": 1, "obs": ""}, {"id": 139, "caixa": 21, "codigo": "CT08250002", "numeracao": 44, "quantidade": 1, "obs": ""}, {"id": 140, "caixa": 21, "codigo": "CT04510001", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 141, "caixa": 21, "codigo": "CT09820002", "numeracao": 41, "quantidade": 1, "obs": ""}, {"id": 142, "caixa": 21, "codigo": "CK14460002", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 143, "caixa": 22, "codigo": "CT00010002", "numeracao": 33, "quantidade": 9, "obs": ""}, {"id": 144, "caixa": 22, "codigo": "CT00010002", "numeracao": 34, "quantidade": 9, "obs": ""}, {"id": 145, "caixa": 23, "codigo": "CT26610002", "numeracao": 33, "quantidade": 3, "obs": ""}, {"id": 146, "caixa": 23, "codigo": "CT26610002", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 147, "caixa": 23, "codigo": "CT26610002", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 148, "caixa": 23, "codigo": "CT26610002", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 149, "caixa": 23, "codigo": "CT26610002", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 150, "caixa": 23, "codigo": "CT28100002", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 151, "caixa": 23, "codigo": "CT19910009", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 152, "caixa": 23, "codigo": "CT19910009", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 153, "caixa": 23, "codigo": "CT31260001", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 154, "caixa": 24, "codigo": "CT04940003", "numeracao": 38, "quantidade": 8, "obs": ""}, {"id": 155, "caixa": 25, "codigo": "CT04940003", "numeracao": 34, "quantidade": 4, "obs": ""}, {"id": 156, "caixa": 25, "codigo": "CT04940003", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 157, "caixa": 25, "codigo": "CT04940001", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 158, "caixa": 25, "codigo": "CT28330001", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 159, "caixa": 25, "codigo": "CT12000055", "numeracao": 37, "quantidade": null, "obs": "quantidade ilegível"}, {"id": 160, "caixa": 26, "codigo": "CT00010003", "numeracao": 44, "quantidade": 8, "obs": ""}, {"id": 161, "caixa": 26, "codigo": "CT25650001", "numeracao": 37, "quantidade": 3, "obs": ""}, {"id": 162, "caixa": 27, "codigo": "CT00010003", "numeracao": 33.5, "quantidade": 1, "obs": ""}, {"id": 163, "caixa": 27, "codigo": "CT00010003", "numeracao": 42, "quantidade": 9, "obs": ""}, {"id": 164, "caixa": 27, "codigo": "CT25940001", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 165, "caixa": 27, "codigo": "CT28010002", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 166, "caixa": 28, "codigo": "CT08250001", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 167, "caixa": 28, "codigo": "CT08250001", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 168, "caixa": 28, "codigo": "CT08250001", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 169, "caixa": 28, "codigo": "CT08250001", "numeracao": 41, "quantidade": 1, "obs": ""}, {"id": 170, "caixa": 28, "codigo": "CT08250001", "numeracao": 42, "quantidade": 1, "obs": ""}, {"id": 171, "caixa": 28, "codigo": "CT08250001", "numeracao": 43, "quantidade": 1, "obs": ""}, {"id": 172, "caixa": 28, "codigo": "CT08250001", "numeracao": 44, "quantidade": 1, "obs": ""}, {"id": 173, "caixa": 28, "codigo": "CT32930001", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 174, "caixa": 29, "codigo": "CT09820001", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 175, "caixa": 29, "codigo": "CT09820001", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 176, "caixa": 29, "codigo": "CT09820002", "numeracao": 37, "quantidade": 2, "obs": ""}, {"id": 177, "caixa": 29, "codigo": "CT09830002", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 178, "caixa": 29, "codigo": "CT04950003", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 179, "caixa": 29, "codigo": "CT04950003", "numeracao": 41, "quantidade": 1, "obs": ""}, {"id": 180, "caixa": 29, "codigo": "CT33490002", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 181, "caixa": 29, "codigo": "CT04490002", "numeracao": 40, "quantidade": 1, "obs": ""}, {"id": 182, "caixa": 30, "codigo": "CT00010004", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 183, "caixa": 30, "codigo": "CT00010004", "numeracao": 34, "quantidade": 3, "obs": ""}, {"id": 184, "caixa": 30, "codigo": "CT00010004", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 185, "caixa": 30, "codigo": "CT00010006", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 186, "caixa": 30, "codigo": "CT09820001", "numeracao": 37, "quantidade": 2, "obs": ""}, {"id": 187, "caixa": 30, "codigo": "CT00040008", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 188, "caixa": 30, "codigo": "CT00040003", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 189, "caixa": 30, "codigo": "CT22880001", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 190, "caixa": 30, "codigo": "CT31260001", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 191, "caixa": 30, "codigo": "CT04950001", "numeracao": 35, "quantidade": null, "obs": "quantidade ilegível"}, {"id": 192, "caixa": 31, "codigo": "CT00040004", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 193, "caixa": 31, "codigo": "CT00010007", "numeracao": 35, "quantidade": 4, "obs": ""}, {"id": 194, "caixa": 31, "codigo": "CT09830001", "numeracao": null, "quantidade": 2, "obs": "número ilegível"}, {"id": 195, "caixa": 31, "codigo": "CT04500003", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 196, "caixa": 31, "codigo": "CT04500003", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 197, "caixa": 31, "codigo": "CT04500001", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 198, "caixa": 31, "codigo": "CT04950003", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 199, "caixa": 31, "codigo": "CT04950003", "numeracao": 35, "quantidade": 2, "obs": ""}, {"id": 200, "caixa": 32, "codigo": "CT04940003", "numeracao": 33, "quantidade": 2, "obs": ""}, {"id": 201, "caixa": 32, "codigo": "CT04940003", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 202, "caixa": 32, "codigo": "CT04940003", "numeracao": 36, "quantidade": 3, "obs": ""}, {"id": 203, "caixa": 32, "codigo": "CT04940003", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 204, "caixa": 33, "codigo": "CT04190080", "numeracao": 34, "quantidade": 4, "obs": ""}, {"id": 205, "caixa": 33, "codigo": "CT04190080", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 206, "caixa": 33, "codigo": "CT04190080", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 207, "caixa": 33, "codigo": "CT04190081", "numeracao": 33, "quantidade": 2, "obs": ""}, {"id": 208, "caixa": 33, "codigo": "CT04190081", "numeracao": 36, "quantidade": 3, "obs": ""}, {"id": 209, "caixa": 34, "codigo": "CT04510008", "numeracao": 34, "quantidade": 2, "obs": ""}, {"id": 210, "caixa": 34, "codigo": "CT04510005", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 211, "caixa": 34, "codigo": "CT04510005", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 212, "caixa": 34, "codigo": "CT09820002", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 213, "caixa": 34, "codigo": "CT09820002", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 214, "caixa": 34, "codigo": "CT04940003", "numeracao": 41, "quantidade": 2, "obs": ""}, {"id": 215, "caixa": 35, "codigo": "CT31270001", "numeracao": 33, "quantidade": 2, "obs": ""}, {"id": 216, "caixa": 35, "codigo": "CT31270001", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 217, "caixa": 35, "codigo": "CT04200081", "numeracao": 33, "quantidade": 2, "obs": ""}, {"id": 218, "caixa": 35, "codigo": "CT04200081", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 219, "caixa": 35, "codigo": "CT04200081", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 220, "caixa": 35, "codigo": "CT04200081", "numeracao": 38, "quantidade": 3, "obs": ""}, {"id": 221, "caixa": 35, "codigo": "CT31130001", "numeracao": 36, "quantidade": 3, "obs": ""}, {"id": 222, "caixa": 35, "codigo": "CT31130001", "numeracao": 37, "quantidade": 3, "obs": ""}, {"id": 223, "caixa": 35, "codigo": "CT31130001", "numeracao": 38, "quantidade": 2, "obs": ""}, {"id": 224, "caixa": 36, "codigo": "CT04200003", "numeracao": 34, "quantidade": 4, "obs": ""}, {"id": 225, "caixa": 36, "codigo": "CT04200003", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 226, "caixa": 36, "codigo": "CT04200003", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 227, "caixa": 36, "codigo": "CT30380001", "numeracao": 34, "quantidade": 3, "obs": ""}, {"id": 228, "caixa": 36, "codigo": "CT30380001", "numeracao": 37, "quantidade": 3, "obs": ""}, {"id": 229, "caixa": 36, "codigo": "CT00010006", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 230, "caixa": 36, "codigo": "CT00010006", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 231, "caixa": 36, "codigo": "CT04500003", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 232, "caixa": 37, "codigo": "CT04950001", "numeracao": 36, "quantidade": 5, "obs": ""}, {"id": 233, "caixa": 37, "codigo": "CT00010007", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 234, "caixa": 37, "codigo": "CT00010007", "numeracao": 40, "quantidade": 1, "obs": ""}, {"id": 235, "caixa": 37, "codigo": "CT25650001", "numeracao": 34, "quantidade": 2, "obs": ""}, {"id": 236, "caixa": 37, "codigo": "CT25650001", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 237, "caixa": 37, "codigo": "CT25650001", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 238, "caixa": 37, "codigo": "CT04200003", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 239, "caixa": 37, "codigo": "CT33430001", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 240, "caixa": 37, "codigo": "CT04200090", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 241, "caixa": 38, "codigo": "CT00040001", "numeracao": 37, "quantidade": 5, "obs": "outros números ilegíveis"}, {"id": 242, "caixa": 38, "codigo": "CK15630002", "numeracao": 36, "quantidade": 2, "obs": ""}, {"id": 243, "caixa": 38, "codigo": "CT32770002", "numeracao": 38, "quantidade": 2, "obs": ""}, {"id": 244, "caixa": 39, "codigo": "CT00040002", "numeracao": 44, "quantidade": 2, "obs": "outros números ilegíveis"}, {"id": 245, "caixa": 39, "codigo": "CT00040003", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 246, "caixa": 39, "codigo": "CT00040003", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 247, "caixa": 39, "codigo": "CT00040003", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 248, "caixa": 39, "codigo": "CT00040001", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 249, "caixa": 40, "codigo": "CT00040007", "numeracao": null, "quantidade": null, "obs": "ilegível"}, {"id": 250, "caixa": 40, "codigo": "CT00040003", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 251, "caixa": 40, "codigo": "CT00040001", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 252, "caixa": 40, "codigo": "CT00040001", "numeracao": 41, "quantidade": 1, "obs": ""}, {"id": 253, "caixa": 40, "codigo": "CT32780002", "numeracao": 40, "quantidade": 1, "obs": ""}, {"id": 254, "caixa": 40, "codigo": "CT04950001", "numeracao": 35, "quantidade": 3, "obs": ""}, {"id": 255, "caixa": 40, "codigo": "CK15630002", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 256, "caixa": 41, "codigo": "CT00040001", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 257, "caixa": 41, "codigo": "CT32650003", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 258, "caixa": 41, "codigo": "CT00040008", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 259, "caixa": 41, "codigo": "CT00010003", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 260, "caixa": 41, "codigo": "CK15640006", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 261, "caixa": 41, "codigo": "CT32780002", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 262, "caixa": 41, "codigo": "CT32780002", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 263, "caixa": 41, "codigo": "CT33470003", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 264, "caixa": 41, "codigo": "CT35160001", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 265, "caixa": 41, "codigo": "CT04500006", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 266, "caixa": 41, "codigo": "CT08260002", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 267, "caixa": 41, "codigo": "CT04940003", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 268, "caixa": 41, "codigo": "CK15620003", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 269, "caixa": 42, "codigo": "CT04500006", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 270, "caixa": 42, "codigo": "CT04500006", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 271, "caixa": 42, "codigo": "CT04500006", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 272, "caixa": 42, "codigo": "CT09830001", "numeracao": 36, "quantidade": 2, "obs": ""}, {"id": 273, "caixa": 42, "codigo": "CT09830001", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 274, "caixa": 42, "codigo": "CT04940001", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 275, "caixa": 42, "codigo": "C00590009", "numeracao": 41, "quantidade": 1, "obs": ""}, {"id": 276, "caixa": 42, "codigo": "CT04940003", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 277, "caixa": 43, "codigo": "CT04190081", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 278, "caixa": 43, "codigo": "CT32820001", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 279, "caixa": 43, "codigo": "CT04480002", "numeracao": 40, "quantidade": 1, "obs": ""}, {"id": 280, "caixa": 43, "codigo": "CT04480002", "numeracao": 43, "quantidade": 1, "obs": ""}, {"id": 281, "caixa": 43, "codigo": "CT04490002", "numeracao": 33, "quantidade": 2, "obs": ""}, {"id": 282, "caixa": 43, "codigo": "CT00010007", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 283, "caixa": 43, "codigo": "CT00010001", "numeracao": 44, "quantidade": 1, "obs": ""}, {"id": 284, "caixa": 43, "codigo": "CT00010008", "numeracao": 42, "quantidade": 1, "obs": ""}, {"id": 285, "caixa": 44, "codigo": "CT04510010", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 286, "caixa": 44, "codigo": "CT04510001", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 287, "caixa": 44, "codigo": "CT04940008", "numeracao": 33, "quantidade": 2, "obs": ""}, {"id": 288, "caixa": 44, "codigo": "CT04940008", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 289, "caixa": 44, "codigo": "CT04940008", "numeracao": 40, "quantidade": 1, "obs": ""}, {"id": 290, "caixa": 44, "codigo": "CT04490002", "numeracao": 44, "quantidade": 1, "obs": ""}, {"id": 291, "caixa": 44, "codigo": "16582C (-> CT04940001)", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 292, "caixa": 45, "codigo": "CT04940003", "numeracao": 33, "quantidade": 3, "obs": ""}, {"id": 293, "caixa": 45, "codigo": "CT04940003", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 294, "caixa": 45, "codigo": "CT09820002", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 295, "caixa": 45, "codigo": "CT09830003", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 296, "caixa": 45, "codigo": "CT09830003", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 297, "caixa": 45, "codigo": "CT04510001", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 298, "caixa": 45, "codigo": "CT32720003", "numeracao": 33, "quantidade": 2, "obs": ""}, {"id": 299, "caixa": 46, "codigo": "CT18540001", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 300, "caixa": 46, "codigo": "CT26610001", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 301, "caixa": 46, "codigo": "CT08330003", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 302, "caixa": 46, "codigo": "CT08330003", "numeracao": 38, "quantidade": 2, "obs": ""}, {"id": 303, "caixa": 46, "codigo": "CT04190079", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 304, "caixa": 46, "codigo": "CT04190078", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 305, "caixa": 46, "codigo": "CT04190084", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 306, "caixa": 46, "codigo": "CT04190070", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 307, "caixa": 46, "codigo": "CK14170001", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 308, "caixa": 46, "codigo": "CT26490001", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 309, "caixa": 46, "codigo": "CT31520001", "numeracao": 40, "quantidade": 1, "obs": ""}, {"id": 310, "caixa": 47, "codigo": "CT32110002", "numeracao": 34, "quantidade": 2, "obs": ""}, {"id": 311, "caixa": 47, "codigo": "CT25630002", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 312, "caixa": 47, "codigo": "CT25630002", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 313, "caixa": 47, "codigo": "CT28280001", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 314, "caixa": 47, "codigo": "CT25940001", "numeracao": 37, "quantidade": 2, "obs": "número lido como 87, provável 37"}, {"id": 315, "caixa": 47, "codigo": "CT29600001", "numeracao": 34, "quantidade": 2, "obs": ""}, {"id": 316, "caixa": 47, "codigo": "CT28420002", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 317, "caixa": 47, "codigo": "CT28420002", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 318, "caixa": 47, "codigo": "CT32190001", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 319, "caixa": 48, "codigo": "CT32790001", "numeracao": 33, "quantidade": 1, "obs": "há mais números rabiscados/ilegíveis"}, {"id": 320, "caixa": 48, "codigo": "CT32790001", "numeracao": 34, "quantidade": 2, "obs": "há mais números rabiscados/ilegíveis"}, {"id": 321, "caixa": 48, "codigo": "CT32790001", "numeracao": 35, "quantidade": 2, "obs": "há mais números rabiscados/ilegíveis"}, {"id": 322, "caixa": 49, "codigo": "CT26550001", "numeracao": 36, "quantidade": 2, "obs": ""}, {"id": 323, "caixa": 49, "codigo": "CT30360001", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 324, "caixa": 49, "codigo": "CT30360001", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 325, "caixa": 49, "codigo": "CT30360001", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 326, "caixa": 49, "codigo": "CT29600002", "numeracao": 34, "quantidade": 5, "obs": ""}, {"id": 327, "caixa": 49, "codigo": "CT32110002", "numeracao": 34, "quantidade": 2, "obs": ""}, {"id": 328, "caixa": 50, "codigo": "CT00040007", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 329, "caixa": 50, "codigo": "CT00040007", "numeracao": 36, "quantidade": 2, "obs": ""}, {"id": 330, "caixa": 50, "codigo": "CT00040004", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 331, "caixa": 50, "codigo": "CT00040001", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 332, "caixa": 50, "codigo": "CT04500003", "numeracao": 35, "quantidade": 2, "obs": ""}, {"id": 333, "caixa": 50, "codigo": "CT04500003", "numeracao": 40, "quantidade": 1, "obs": ""}, {"id": 334, "caixa": 50, "codigo": "CT04500001", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 335, "caixa": 50, "codigo": "CT04500001", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 336, "caixa": 51, "codigo": "CT28330002", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 337, "caixa": 51, "codigo": "CT28330002", "numeracao": 36, "quantidade": 5, "obs": ""}, {"id": 338, "caixa": 51, "codigo": "CT28330002", "numeracao": 37, "quantidade": 2, "obs": ""}, {"id": 339, "caixa": 51, "codigo": "CT28330002", "numeracao": 38, "quantidade": 3, "obs": ""}, {"id": 340, "caixa": 51, "codigo": "CT28330002", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 341, "caixa": 52, "codigo": "CT29600001", "numeracao": 36, "quantidade": 12, "obs": ""}, {"id": 342, "caixa": 53, "codigo": "CT33430003", "numeracao": 35, "quantidade": 2, "obs": ""}, {"id": 343, "caixa": 53, "codigo": "CT33430003", "numeracao": 37, "quantidade": 3, "obs": ""}, {"id": 344, "caixa": 53, "codigo": "CT35160002", "numeracao": 35, "quantidade": 2, "obs": ""}, {"id": 345, "caixa": 53, "codigo": "CT35160002", "numeracao": 36, "quantidade": 2, "obs": ""}, {"id": 346, "caixa": 53, "codigo": "CT35160002", "numeracao": 37, "quantidade": 2, "obs": ""}, {"id": 347, "caixa": 53, "codigo": "CT00010008", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 348, "caixa": 53, "codigo": "CT00010008", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 349, "caixa": 53, "codigo": "CT00010003", "numeracao": 42, "quantidade": 1, "obs": ""}, {"id": 350, "caixa": 53, "codigo": "CT04500006", "numeracao": 35, "quantidade": 2, "obs": ""}, {"id": 351, "caixa": 53, "codigo": "CT04950003", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 352, "caixa": 53, "codigo": "CT04480002", "numeracao": 44, "quantidade": 1, "obs": ""}, {"id": 353, "caixa": 54, "codigo": "CT04950003", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 354, "caixa": 54, "codigo": "CT04950003", "numeracao": 41, "quantidade": 3, "obs": ""}, {"id": 355, "caixa": 54, "codigo": "CT09830003", "numeracao": 34, "quantidade": 2, "obs": ""}, {"id": 356, "caixa": 54, "codigo": "CT09830004", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 357, "caixa": 54, "codigo": "CT09830004", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 358, "caixa": 54, "codigo": "CT09820001", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 359, "caixa": 54, "codigo": "CT09820002", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 360, "caixa": 55, "codigo": "CT04470002", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 361, "caixa": 55, "codigo": "CT04500003", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 362, "caixa": 55, "codigo": "CT04500003", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 363, "caixa": 55, "codigo": "CT04500003", "numeracao": 42, "quantidade": 1, "obs": ""}, {"id": 364, "caixa": 55, "codigo": "CT04500003", "numeracao": 43, "quantidade": 1, "obs": ""}, {"id": 365, "caixa": 55, "codigo": "CT35150001", "numeracao": 42, "quantidade": 9, "obs": "qtd lida como 9, conferir"}, {"id": 366, "caixa": 55, "codigo": "CT28330002", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 367, "caixa": 55, "codigo": "CT04190088", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 368, "caixa": 55, "codigo": "CT35050002", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 369, "caixa": 55, "codigo": "CT08260002", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 370, "caixa": 56, "codigo": "CT04500010", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 371, "caixa": 56, "codigo": "CT04500010", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 372, "caixa": 56, "codigo": "CT04500010", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 373, "caixa": 56, "codigo": "CT04500010", "numeracao": 41, "quantidade": 2, "obs": ""}, {"id": 374, "caixa": 56, "codigo": "CT04500006", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 375, "caixa": 56, "codigo": "CT04500006", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 376, "caixa": 56, "codigo": "CT04500006", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 377, "caixa": 56, "codigo": "CT04500006", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 378, "caixa": 56, "codigo": "CT04500006", "numeracao": 40, "quantidade": 2, "obs": ""}, {"id": 379, "caixa": 57, "codigo": "CT04490002", "numeracao": 43, "quantidade": 1, "obs": ""}, {"id": 380, "caixa": 57, "codigo": "CT04490002", "numeracao": 44, "quantidade": 1, "obs": ""}, {"id": 381, "caixa": 57, "codigo": "CT04490001", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 382, "caixa": 57, "codigo": "CT04490001", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 383, "caixa": 57, "codigo": "CT04490001", "numeracao": 43, "quantidade": 1, "obs": ""}, {"id": 384, "caixa": 57, "codigo": "CT04510005", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 385, "caixa": 57, "codigo": "CT17290001", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 386, "caixa": 58, "codigo": "CT29640002", "numeracao": 36, "quantidade": 13, "obs": ""}, {"id": 387, "caixa": 58, "codigo": "CT29640002", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 388, "caixa": 58, "codigo": "CT04460001", "numeracao": 42, "quantidade": 1, "obs": ""}, {"id": 389, "caixa": 58, "codigo": "CT00010003", "numeracao": 37, "quantidade": 2, "obs": ""}, {"id": 390, "caixa": 59, "codigo": "CT19910004", "numeracao": 38, "quantidade": 2, "obs": ""}, {"id": 391, "caixa": 59, "codigo": "CT29720001", "numeracao": 36, "quantidade": 4, "obs": ""}, {"id": 392, "caixa": 59, "codigo": "CT00040003", "numeracao": 40, "quantidade": 1, "obs": ""}, {"id": 393, "caixa": 59, "codigo": "CT00040003", "numeracao": 44, "quantidade": 1, "obs": ""}, {"id": 394, "caixa": 60, "codigo": "CT19430002", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 395, "caixa": 60, "codigo": "CT27620002", "numeracao": 35, "quantidade": 1, "obs": "número lido como 85, provável 35"}, {"id": 396, "caixa": 60, "codigo": "CT29130001", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 397, "caixa": 60, "codigo": "C00639009", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 398, "caixa": 60, "codigo": "C00505002", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 399, "caixa": 60, "codigo": "C00505001", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 400, "caixa": 60, "codigo": "CT28900001", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 401, "caixa": 61, "codigo": "CT29730001", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 402, "caixa": 61, "codigo": "CT29730001", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 403, "caixa": 61, "codigo": "CT29730001", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 404, "caixa": 61, "codigo": "CT28890001", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 405, "caixa": 61, "codigo": "CT28890001", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 406, "caixa": 61, "codigo": "CT29780001", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 407, "caixa": 61, "codigo": "CT04200085", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 408, "caixa": 61, "codigo": "CT04200003", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 409, "caixa": 61, "codigo": "CT00010002", "numeracao": 41, "quantidade": 1, "obs": ""}, {"id": 410, "caixa": 61, "codigo": "CT00010001", "numeracao": 35, "quantidade": 2, "obs": "número lido como 95, provável 35"}, {"id": 411, "caixa": 61, "codigo": "CT04460002", "numeracao": 44, "quantidade": 1, "obs": ""}, {"id": 412, "caixa": 61, "codigo": "CT27960001", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 413, "caixa": 61, "codigo": "CT29380002", "numeracao": 40, "quantidade": null, "obs": "quantidade ilegível"}, {"id": 414, "caixa": 62, "codigo": "CT04190030", "numeracao": 36, "quantidade": 2, "obs": ""}, {"id": 415, "caixa": 62, "codigo": "CT28330002", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 416, "caixa": 62, "codigo": "CT28330002", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 417, "caixa": 62, "codigo": "CK13030001", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 418, "caixa": 62, "codigo": "CT04470001", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 419, "caixa": 62, "codigo": "CT04190086", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 420, "caixa": 62, "codigo": "CT04190081", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 421, "caixa": 62, "codigo": "CT00040006", "numeracao": 33, "quantidade": null, "obs": "quantidade ilegível"}, {"id": 422, "caixa": 62, "codigo": "CT29630001", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 423, "caixa": 62, "codigo": "CT30370003", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 424, "caixa": 62, "codigo": "CK00040002", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 425, "caixa": 63, "codigo": "CT00040002", "numeracao": 42, "quantidade": null, "obs": "quantidade ilegível"}, {"id": 426, "caixa": 63, "codigo": "CT04190088", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 427, "caixa": 63, "codigo": "CT00040008", "numeracao": 39, "quantidade": 2, "obs": ""}, {"id": 428, "caixa": 63, "codigo": "CT00040004", "numeracao": 43, "quantidade": 1, "obs": ""}, {"id": 429, "caixa": 63, "codigo": "CT00040003", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 430, "caixa": 63, "codigo": "CT00040003", "numeracao": 40, "quantidade": 1, "obs": ""}, {"id": 431, "caixa": 63, "codigo": "CT00040003", "numeracao": 44, "quantidade": 1, "obs": ""}, {"id": 432, "caixa": 63, "codigo": "CT00040006", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 433, "caixa": 63, "codigo": "CT00040006", "numeracao": 39, "quantidade": 1, "obs": ""}, {"id": 434, "caixa": 63, "codigo": "CT04190093", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 435, "caixa": 64, "codigo": "CT00040003", "numeracao": 44, "quantidade": 4, "obs": ""}, {"id": 436, "caixa": 65, "codigo": "CT00010002", "numeracao": 40, "quantidade": 2, "obs": "números 33 e 37 ilegíveis"}, {"id": 437, "caixa": 65, "codigo": "CT00010002", "numeracao": 41, "quantidade": 2, "obs": "números 33 e 37 ilegíveis"}, {"id": 438, "caixa": 65, "codigo": "CT00010004", "numeracao": 37, "quantidade": null, "obs": "quantidade ilegível"}, {"id": 439, "caixa": 65, "codigo": "CT00010008", "numeracao": 42, "quantidade": 1, "obs": ""}, {"id": 440, "caixa": 65, "codigo": "CT00010007", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 441, "caixa": 65, "codigo": "CT00010007", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 442, "caixa": 65, "codigo": "CT04200003", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 443, "caixa": 66, "codigo": "CT04190003", "numeracao": 35, "quantidade": 2, "obs": ""}, {"id": 444, "caixa": 66, "codigo": "CT04190003", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 445, "caixa": 66, "codigo": "CK00040001", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 446, "caixa": 66, "codigo": "CK15630006", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 447, "caixa": 66, "codigo": "CK15630006", "numeracao": 36, "quantidade": 2, "obs": ""}, {"id": 448, "caixa": 66, "codigo": "CK15630006", "numeracao": 33, "quantidade": 2, "obs": ""}, {"id": 449, "caixa": 67, "codigo": "C00523001", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 450, "caixa": 67, "codigo": "C00523001", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 451, "caixa": 67, "codigo": "C00523001", "numeracao": 43, "quantidade": 1, "obs": ""}, {"id": 452, "caixa": 67, "codigo": "C00668002", "numeracao": 38, "quantidade": 1, "obs": ""}, {"id": 453, "caixa": 67, "codigo": "C00569002", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 454, "caixa": 67, "codigo": "C00590004", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 455, "caixa": 68, "codigo": "CT29600001", "numeracao": 36, "quantidade": 7, "obs": ""}, {"id": 456, "caixa": 68, "codigo": "CT29600001", "numeracao": 33, "quantidade": 1, "obs": ""}, {"id": 457, "caixa": 68, "codigo": "CT30490003", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 458, "caixa": 68, "codigo": "CT04480001", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 459, "caixa": 68, "codigo": "CT04500003", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 460, "caixa": 69, "codigo": "C00544001", "numeracao": 34, "quantidade": 1, "obs": ""}, {"id": 461, "caixa": 69, "codigo": "C00505002", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 462, "caixa": 69, "codigo": "C00673002", "numeracao": 40, "quantidade": 1, "obs": ""}, {"id": 463, "caixa": 69, "codigo": "C00544002", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 464, "caixa": 69, "codigo": "CT28900001", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 465, "caixa": 69, "codigo": "CT00060003", "numeracao": 43, "quantidade": 1, "obs": ""}, {"id": 466, "caixa": 71, "codigo": "CT23690001", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 467, "caixa": 71, "codigo": "CT23690001", "numeracao": 41, "quantidade": 1, "obs": ""}, {"id": 468, "caixa": 71, "codigo": "CT30490003", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 469, "caixa": 72, "codigo": "C00498002", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 470, "caixa": 72, "codigo": "C00498002", "numeracao": 40, "quantidade": 1, "obs": ""}, {"id": 471, "caixa": 72, "codigo": "C00668001", "numeracao": 40, "quantidade": 1, "obs": ""}, {"id": 472, "caixa": 72, "codigo": "C00668001", "numeracao": 42, "quantidade": 1, "obs": ""}, {"id": 473, "caixa": 72, "codigo": "CT29630001", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 474, "caixa": 72, "codigo": "CT29630001", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 475, "caixa": 72, "codigo": "CT29630001", "numeracao": 38, "quantidade": 2, "obs": ""}, {"id": 476, "caixa": 72, "codigo": "CT00120006", "numeracao": 35, "quantidade": 1, "obs": ""}, {"id": 477, "caixa": 72, "codigo": "CT33610001", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 478, "caixa": 72, "codigo": "CT32820002", "numeracao": 36, "quantidade": 1, "obs": ""}, {"id": 479, "caixa": 77, "codigo": "CT00040001", "numeracao": 36, "quantidade": null, "obs": "número 85 ilegível"}, {"id": 480, "caixa": 77, "codigo": "CT00040001", "numeracao": 41, "quantidade": 1, "obs": "número 85 ilegível"}, {"id": 481, "caixa": 77, "codigo": "CT00040003", "numeracao": 37, "quantidade": 1, "obs": ""}, {"id": 482, "caixa": 77, "codigo": "CT04190003", "numeracao": 37, "quantidade": 3, "obs": ""}];
+
+let DATA = [];
+let nextId = 1;
+let sortKey = null, sortDir = 1;
+let db;
+
+const tableBody = document.getElementById('tableBody');
+const emptyState = document.getElementById('emptyState');
+const searchInput = document.getElementById('searchInput');
+const filterCaixa = document.getElementById('filterCaixa');
+const resultsLabel = document.getElementById('resultsLabel');
+const resultsCount = document.getElementById('resultsCount');
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=> t.classList.remove('show'), 2200);
+}
+
+// ============================================================
+// ARMAZENAMENTO (IndexedDB) — os dados agora ficam salvos de verdade no
+// navegador, sobrevivendo a fechar a aba ou recarregar a página
+// (diferente da versão anterior, que só existia na memória enquanto a
+// aba estava aberta e voltava aos dados originais a cada recarregada).
+//
+// Na primeira vez que o app abre num aparelho, semeia o banco com os
+// ~480 itens já transcritos das caixas 1 a 77. Depois disso, esse
+// conjunto inicial nunca é usado de novo — só reflete o que está
+// realmente salvo, incluindo tudo que você adicionar ou excluir.
+// ============================================================
+const request = indexedDB.open('EstoqueCaixasDB', 1);
+
+request.onupgradeneeded = function(e){
+  db = e.target.result;
+  if(!db.objectStoreNames.contains('items')){
+    const store = db.createObjectStore('items', { keyPath: 'id' });
+    INITIAL_DATA.forEach(item => store.add(item));
+  }
+};
+
+request.onsuccess = function(e){
+  db = e.target.result;
+  loadFromDB();
+};
+
+request.onerror = function(){
+  toast('Não foi possível acessar o armazenamento do dispositivo. Se estiver em aba anônima/privada, saia dela e tente de novo.');
+};
+
+function loadFromDB(){
+  const tx = db.transaction('items', 'readonly');
+  const req = tx.objectStore('items').getAll();
+  req.onsuccess = function(){
+    DATA = req.result;
+    nextId = DATA.length ? Math.max(...DATA.map(d => d.id)) + 1 : 1;
+    populateCaixaFilter();
+    render();
+  };
+}
+
+function saveItemToDB(item){
+  const tx = db.transaction('items', 'readwrite');
+  tx.onerror = function(e){
+    toast('Erro ao salvar: ' + (e.target.error ? e.target.error.message : 'tente novamente.'));
+  };
+  tx.objectStore('items').put(item);
+}
+
+function deleteItemFromDB(id){
+  const tx = db.transaction('items', 'readwrite');
+  tx.objectStore('items').delete(id);
+}
+
+function replaceAllInDB(newItems, onDone){
+  const tx = db.transaction('items', 'readwrite');
+  const store = tx.objectStore('items');
+  store.clear();
+  newItems.forEach(item => store.put(item));
+  tx.oncomplete = onDone;
+}
+
+function populateCaixaFilter(){
+  const current = filterCaixa.value;
+  const caixas = [...new Set(DATA.map(d => d.caixa))].sort((a,b)=>a-b);
+  filterCaixa.innerHTML = '<option value="">Todas as caixas</option>' +
+    caixas.map(c => `<option value="${c}">Caixa ${c}</option>`).join('');
+  filterCaixa.value = current;
+}
+
+function matches(item, term){
+  if(!term) return true;
+  term = term.toLowerCase().trim();
+  const caixaStr = 'caixa ' + item.caixa;
+  return (
+    String(item.caixa).includes(term) ||
+    caixaStr.includes(term) ||
+    (item.codigo||'').toLowerCase().includes(term) ||
+    String(item.numeracao ?? '').toLowerCase().includes(term) ||
+    String(item.quantidade ?? '').toLowerCase().includes(term) ||
+    (item.obs||'').toLowerCase().includes(term)
+  );
+}
+
+function render(){
+  const term = searchInput.value;
+  const caixaSel = filterCaixa.value;
+
+  let filtered = DATA.filter(d => matches(d, term) && (caixaSel === '' || String(d.caixa) === caixaSel));
+
+  if(sortKey){
+    filtered.sort((a,b)=>{
+      let av = a[sortKey], bv = b[sortKey];
+      if(av === null || av === undefined) av = '';
+      if(bv === null || bv === undefined) bv = '';
+      if(typeof av === 'number' && typeof bv === 'number') return (av-bv)*sortDir;
+      return String(av).localeCompare(String(bv), 'pt-BR', {numeric:true}) * sortDir;
+    });
+  } else {
+    filtered.sort((a,b)=> a.caixa - b.caixa || String(a.codigo).localeCompare(String(b.codigo)));
+  }
+
+  tableBody.innerHTML = '';
+  if(filtered.length === 0){
+    emptyState.style.display = 'block';
+  } else {
+    emptyState.style.display = 'none';
+    const frag = document.createDocumentFragment();
+    filtered.forEach(item => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="badge">${item.caixa}</span></td>
+        <td>${item.codigo ?? ''}</td>
+        <td>${item.numeracao ?? '<span class="empty-obs">—</span>'}</td>
+        <td class="qtd">${item.quantidade ?? '<span class="empty-obs">—</span>'}</td>
+        <td class="obs">${item.obs ? item.obs : '<span class="empty-obs">—</span>'}</td>
+        <td><button class="btn-danger" data-id="${item.id}">Excluir</button></td>
+      `;
+      frag.appendChild(tr);
+    });
+    tableBody.appendChild(frag);
+  }
+
+  resultsLabel.textContent = (term || caixaSel) ? 'Resultados da busca' : 'Todos os itens';
+  resultsCount.textContent = filtered.length + ' registro(s)';
+  updateStats();
+}
+
+function updateStats(){
+  document.getElementById('statItens').textContent = DATA.length;
+  const pares = DATA.reduce((s,d)=> s + (typeof d.quantidade === 'number' ? d.quantidade : 0), 0);
+  document.getElementById('statPares').textContent = pares;
+  document.getElementById('statCaixas').textContent = new Set(DATA.map(d=>d.caixa)).size;
+}
+
+// ============================================================
+// CONFIRMAÇÃO CUSTOMIZADA — substitui o confirm() nativo do navegador
+// (feio e trava a tela) por um diálogo no mesmo estilo visual do app.
+// ============================================================
+const confirmOverlay = document.getElementById('confirmOverlay');
+const confirmMessage = document.getElementById('confirmMessage');
+const confirmOkBtn = document.getElementById('confirmOkBtn');
+const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+let confirmResolve = null;
+
+function showConfirm(message){
+  return new Promise(resolve => {
+    confirmMessage.textContent = message;
+    confirmResolve = resolve;
+    confirmOverlay.classList.add('show');
+  });
+}
+function closeConfirm(result){
+  confirmOverlay.classList.remove('show');
+  if(confirmResolve){ const r = confirmResolve; confirmResolve = null; r(result); }
+}
+confirmOkBtn.addEventListener('click', ()=> closeConfirm(true));
+confirmCancelBtn.addEventListener('click', ()=> closeConfirm(false));
+confirmOverlay.addEventListener('click', (e)=>{ if(e.target === confirmOverlay) closeConfirm(false); });
+
+tableBody.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-id]');
+  if(!btn) return;
+  const id = Number(btn.dataset.id);
+  const item = DATA.find(d => d.id === id);
+  if(!item) return;
+  showConfirm(`Excluir o item da Caixa ${item.caixa} — código ${item.codigo} (numeração ${item.numeracao ?? '—'})?`).then(ok=>{
+    if(!ok) return;
+    DATA = DATA.filter(d => d.id !== id);
+    deleteItemFromDB(id);
+    populateCaixaFilter();
+    render();
+    toast('Item excluído.');
+  });
+});
+
+document.getElementById('addForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const caixa = Number(document.getElementById('inCaixa').value);
+  const codigo = document.getElementById('inCodigo').value.trim();
+  const numRaw = document.getElementById('inNumeracao').value.trim();
+  const qtdRaw = document.getElementById('inQuantidade').value.trim();
+  const obs = document.getElementById('inObs').value.trim();
+
+  if(!caixa || !codigo){
+    toast('Preencha ao menos Caixa e Código.');
+    return;
+  }
+  if(!db){
+    toast('Ainda carregando os dados, aguarde um instante e tente de novo.');
+    return;
+  }
+
+  const numeracao = numRaw === '' ? null : (isNaN(Number(numRaw)) ? numRaw : Number(numRaw));
+  const quantidade = qtdRaw === '' ? null : Number(qtdRaw);
+
+  const newItem = { id: nextId++, caixa, codigo, numeracao, quantidade, obs };
+  DATA.push(newItem);
+  saveItemToDB(newItem);
+  populateCaixaFilter();
+  render();
+  e.target.reset();
+  toast('Item adicionado com sucesso.');
+});
+
+searchInput.addEventListener('input', render);
+filterCaixa.addEventListener('change', render);
+document.getElementById('clearBtn').addEventListener('click', () => {
+  searchInput.value = '';
+  filterCaixa.value = '';
+  render();
+});
+
+document.querySelectorAll('thead th[data-key]').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.key;
+    if(sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = 1; }
+    render();
+  });
+});
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(DATA, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'estoque_caixas.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Arquivo exportado.');
+});
+
+document.getElementById('importBtn').addEventListener('click', () => {
+  document.getElementById('importFile').click();
+});
+document.getElementById('importFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try{
+      const imported = JSON.parse(evt.target.result);
+      if(!Array.isArray(imported)) throw new Error('formato inválido');
+      const newData = imported.map((d,i) => ({ id: i+1, caixa: d.caixa, codigo: d.codigo, numeracao: d.numeracao ?? null, quantidade: d.quantidade ?? null, obs: d.obs || '' }));
+      replaceAllInDB(newData, () => {
+        DATA = newData;
+        nextId = DATA.length + 1;
+        populateCaixaFilter();
+        render();
+        toast('Dados importados com sucesso.');
+      });
+    }catch(err){
+      toast('Erro ao importar arquivo: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+});
+
+// ============================================================
+// PWA — registra o Service Worker que guarda os arquivos do app em
+// cache, permitindo abrir mais rápido, instalar na tela inicial do
+// celular e continuar funcionando mesmo sem internet.
+// ============================================================
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+
+  let swRefreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+    if(swRefreshing) return;
+    swRefreshing = true;
+    window.location.reload();
+  });
+}
+</script>
+</body>
+</html>
